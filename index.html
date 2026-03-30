@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<meta charset="utf-8">
+<title>VR AR Hand</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/examples/js/vr/VRButton.js"></script>
+
+<style>
+body { margin: 0; overflow: hidden; }
+video {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+canvas {
+  position: fixed;
+  top: 0;
+}
+</style>
+
+</head>
+
+<body>
+<video id="camera" autoplay playsinline></video>
+
+<script>
+const video = document.getElementById("camera");
+
+// Kamera
+navigator.mediaDevices.getUserMedia({ video: true })
+.then(stream => video.srcObject = stream);
+
+// THREE scena
+const scene = new THREE.Scene();
+const cam = new THREE.PerspectiveCamera(70, innerWidth/innerHeight, 0.1, 1000);
+cam.position.z = 2;
+
+const renderer = new THREE.WebGLRenderer({ alpha: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.xr.enabled = true;
+document.body.appendChild(renderer.domElement);
+
+document.body.appendChild(VRButton.createButton(renderer));
+
+// Kubas
+const cube = new THREE.Mesh(
+  new THREE.BoxGeometry(),
+  new THREE.MeshBasicMaterial({ color: 0x00ff00 })
+);
+scene.add(cube);
+
+// MediaPipe
+const hands = new Hands({
+  locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`
+});
+
+hands.setOptions({
+  maxNumHands: 1,
+  modelComplexity: 0
+});
+
+hands.onResults(r => {
+  if (r.multiHandLandmarks.length > 0) {
+    const p = r.multiHandLandmarks[0][8];
+    cube.position.x = (p.x - 0.5) * 2;
+    cube.position.y = -(p.y - 0.5) * 2;
+  }
+});
+
+// MediaPipe kamera
+const camera = new Camera(video, {
+  onFrame: async () => {
+    await hands.send({ image: video });
+  },
+  width: 640,
+  height: 480
+});
+camera.start();
+
+// Render loop
+renderer.setAnimationLoop(() => {
+  cube.rotation.x += 0.01;
+  cube.rotation.y += 0.01;
+  renderer.render(scene, cam);
+});
+</script>
+
+</body>
+</html>

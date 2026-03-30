@@ -3,7 +3,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>Hand Tracking DEBUG</title>
+<title>Hand Tracking FIX</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
 
@@ -11,10 +11,22 @@
 
 <style>
 body { margin:0; overflow:hidden; background:black; }
-video, canvas {
+
+video {
   position:absolute;
   top:0;
   left:0;
+  width:100vw;
+  height:100vh;
+  object-fit:cover;
+}
+
+canvas {
+  position:absolute;
+  top:0;
+  left:0;
+  width:100vw;
+  height:100vh;
 }
 </style>
 
@@ -29,29 +41,27 @@ const video = document.getElementById("video");
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
-// 👉 GALINĖ kamera (labai svarbu)
+// 👉 Redmi FIX (be exact!)
 navigator.mediaDevices.getUserMedia({
-  video: {
-    facingMode: { exact: "environment" }
-  }
+  video: { facingMode: "environment" }
 })
 .then(stream => {
   video.srcObject = stream;
 })
 .catch(err => {
-  alert("Kamera neveikia: " + err);
+  alert("Klaida su kamera: " + err.message);
 });
 
-// 👉 MediaPipe setup
+// MediaPipe
 const hands = new Hands({
   locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`
 });
 
 hands.setOptions({
   maxNumHands: 1,
-  modelComplexity: 1,
-  minDetectionConfidence: 0.7,
-  minTrackingConfidence: 0.7
+  modelComplexity: 0,
+  minDetectionConfidence: 0.6,
+  minTrackingConfidence: 0.6
 });
 
 hands.onResults(results => {
@@ -70,15 +80,15 @@ hands.onResults(results => {
       const y = hand[i].y * canvas.height;
 
       ctx.beginPath();
-      ctx.arc(x, y, 8, 0, Math.PI*2);
+      ctx.arc(x, y, 10, 0, Math.PI*2);
       ctx.fillStyle = "lime";
       ctx.fill();
     }
   }
 });
 
-// 👉 svarbu: paleisti tik kai video ready
-video.onloadeddata = () => {
+// 👉 Paleisti tik kai video tikrai veikia
+video.addEventListener("loadeddata", () => {
   const camera = new Camera(video, {
     onFrame: async () => {
       await hands.send({ image: video });
@@ -87,7 +97,7 @@ video.onloadeddata = () => {
     height: 480
   });
   camera.start();
-};
+});
 </script>
 
 </body>

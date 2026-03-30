@@ -1,17 +1,14 @@
 <!DOCTYPE html>
-
 <html>
 <head>
 <meta charset="utf-8">
-<title>Hand Tracking FIX</title>
+<title>Hand Tracking Fallback</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
-
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
 
 <style>
 body { margin:0; overflow:hidden; background:black; }
-
 video {
   position:absolute;
   top:0;
@@ -20,7 +17,6 @@ video {
   height:100vh;
   object-fit:cover;
 }
-
 canvas {
   position:absolute;
   top:0;
@@ -29,30 +25,39 @@ canvas {
   height:100vh;
 }
 </style>
-
 </head>
 
 <body>
-
-<video id="video" autoplay playsinline></video> <canvas id="canvas"></canvas>
+<video id="video" autoplay playsinline></video>
+<canvas id="canvas"></canvas>
 
 <script>
 const video = document.getElementById("video");
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
-// 👉 Redmi FIX (be exact!)
-navigator.mediaDevices.getUserMedia({
-  video: { facingMode: "environment" }
-})
-.then(stream => {
-  video.srcObject = stream;
-})
-.catch(err => {
-  alert("Klaida su kamera: " + err.message);
-});
+// Funkcija gauti kamerą su fallback
+async function initCamera() {
+  try {
+    // Pirmas bandymas: galinė kamera
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: "environment" } }
+    });
+    video.srcObject = stream;
+  } catch(err) {
+    console.warn("Pirmas bandymas nepavyko, fallback:", err.message);
+    try {
+      // Fallback: bet kuri kamera
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      video.srcObject = stream;
+    } catch(err2) {
+      alert("Kamera vis tiek neveikia: " + err2.message);
+      return;
+    }
+  }
+}
 
-// MediaPipe
+// MediaPipe setup
 const hands = new Hands({
   locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`
 });
@@ -64,6 +69,7 @@ hands.setOptions({
   minTrackingConfidence: 0.6
 });
 
+// Piešimas ant canvas
 hands.onResults(results => {
   if (!video.videoWidth) return;
 
@@ -87,18 +93,20 @@ hands.onResults(results => {
   }
 });
 
-// 👉 Paleisti tik kai video tikrai veikia
+// Paleidžiame MediaPipe kai video ready
 video.addEventListener("loadeddata", () => {
-  const camera = new Camera(video, {
+  const cameraMP = new Camera(video, {
     onFrame: async () => {
       await hands.send({ image: video });
     },
     width: 640,
     height: 480
   });
-  camera.start();
+  cameraMP.start();
 });
-</script>
 
+// Start kamerą
+initCamera();
+</script>
 </body>
 </html>
